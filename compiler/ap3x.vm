@@ -1,0 +1,7 @@
+    mov @lax, 16
+    mov @rbx, 1
+.test
+    add @rax, 1 
+    cmp @lax, 20
+    jnz .test
+    store "AP3X" // stores "AP3X" on stack

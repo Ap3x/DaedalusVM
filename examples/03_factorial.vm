@@ -1,0 +1,13 @@
+// 03_factorial -- 5! computed with mul inside a countdown loop.
+
+    mov @rax, 1        // running product
+    mov @rbx, 5        // n
+    mov @rcx, 1        // step
+.loop
+    mul @rax, @rbx     // rax *= rbx   (1,5,20,60,120)
+    sub @rbx, @rcx     // rbx -= 1
+    cmp @rbx, 0
+    jnz .loop
+    halt
+
+// expected: regs[0]=120 (ax) regs[1]=0 (bx) regs[2]=1 (cx)

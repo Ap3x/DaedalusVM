@@ -1,0 +1,14 @@
+// 02_loop_sum -- control flow with cmp + jnz.
+// Adds 5 + 4 + 3 + 2 + 1 by counting rbx down to zero.
+
+    mov @rax, 0        // accumulator
+    mov @rbx, 5        // counter
+    mov @rcx, 1        // step
+.loop
+    add @rax, @rbx     // rax += rbx
+    sub @rbx, @rcx     // rbx -= 1
+    cmp @rbx, 0        // sets zero_flag when rbx == 0
+    jnz .loop          // keep looping while rbx != 0
+    halt
+
+// expected: regs[0]=15 (ax) regs[1]=0 (bx) regs[2]=1 (cx)

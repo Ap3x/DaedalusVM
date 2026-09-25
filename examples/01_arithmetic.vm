@@ -1,0 +1,23 @@
+// 01_arithmetic -- the five ALU ops, each writing a distinct register.
+// Operands are registers; `mov @rDst, @rSrc` copies, then the op works in place.
+
+    mov @rax, 100
+    mov @rbx, 7
+
+    mov @rcx, @rax
+    add @rcx, @rbx     // rcx = 100 + 7  = 107
+
+    mov @rdx, @rax
+    sub @rdx, @rbx     // rdx = 100 - 7  = 93
+
+    mov @rsi, @rax
+    mul @rsi, @rbx     // rsi = 100 * 7  = 700
+
+    mov @rbp, @rax
+    div @rbp, @rbx     // rbp = 100 / 7  = 14  (integer)
+
+    mod @rax, @rbx     // rax = 100 % 7  = 2
+    halt
+
+// expected: regs[0]=2 (ax) regs[1]=7 (bx) regs[2]=107 (cx)
+//           regs[3]=93 (dx) regs[5]=14 (bp) regs[6]=700 (si)

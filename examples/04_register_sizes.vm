@@ -1,0 +1,12 @@
+// 04_register_sizes -- the size prefix selects how much of a register you read.
+//   r = 64-bit (full)   e = low 32 bits   u = low 16 bits   l = low 8 bits
+// Here rax holds 0x0000FFFF; reading it through @lax / @uax masks it.
+
+    mov @rax, 65535    // 0x0000FFFF
+    mov @rbx, 0
+    add @rbx, @lax     // rbx += low  8 bits of ax  -> 0xFF   = 255
+    mov @rcx, 0
+    add @rcx, @uax     // rcx += low 16 bits of ax  -> 0xFFFF = 65535
+    halt
+
+// expected: regs[0]=65535 (ax) regs[1]=255 (bx) regs[2]=65535 (cx)

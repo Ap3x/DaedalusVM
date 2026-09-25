@@ -1,0 +1,10 @@
+// 05_jumps -- an unconditional jmp branches over code that never runs.
+
+    mov @rax, 1
+    jmp .skip
+    mov @rax, 999      // dead code: jmp hops over this
+.skip
+    mov @rbx, 2
+    halt
+
+// expected: regs[0]=1 (ax, NOT 999) regs[1]=2 (bx)

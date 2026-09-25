@@ -1,0 +1,61 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build (Windows)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # The assembler is Go; CMake's `assembler` target shells out to `go build`,
+      # so Go must be on PATH before we configure. Version comes from go.mod.
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: compiler/go.mod
+
+      # One CMake build compiles BOTH the C++ loader and the Go assembler.
+      - name: Configure
+        run: cmake -S . -B build -A x64
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Verify build outputs
+        shell: pwsh
+        run: |
+          $outputs = @(
+            "build/Release/Ap3xVMLoader.exe",  # C++ VM loader
+            "compiler/VMCompiler.exe"          # Go assembler
+          )
+          foreach ($f in $outputs) {
+            if (-not (Test-Path $f)) { throw "missing build output: $f" }
+            Write-Host "ok: $f"
+          }
+
+      # Prove the toolchain works end to end: assemble an example and run it.
+      - name: Smoke test
+        shell: pwsh
+        run: |
+          compiler/VMCompiler.exe examples/02_loop_sum.vm
+          build/Release/Ap3xVMLoader.exe examples/02_loop_sum.bin
+
+      - name: Upload binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: ap3xvm-binaries
+          path: |
+            build/Release/Ap3xVMLoader.exe
+            compiler/VMCompiler.exe
+          if-no-files-found: error

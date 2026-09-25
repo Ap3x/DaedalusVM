@@ -1,0 +1,7 @@
+// 06_string_store -- `store` writes a string's bytes onto the VM stack.
+// The assembler lowercases every line, so "Hello" is stored as "hello".
+
+    store "Hello"
+    halt
+
+// expected: stack (sp=5): hello

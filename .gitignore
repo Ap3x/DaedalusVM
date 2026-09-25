@@ -1,0 +1,42 @@
+# Visual Studio
+.vs/
+.vscode/
+*.user
+*.suo
+*.VC.db
+*.VC.opendb
+
+# Build output
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+bin/
+obj/
+out/
+build/
+
+# C/C++ artifacts
+*.exe
+*.obj
+*.pdb
+*.ilk
+*.idb
+*.log
+*.recipe
+*.tlog
+*.lastbuildstate
+
+# Go artifacts
+compiler/VMCompiler.exe
+*.test
+coverage.out
+
+# Generated VM bytecode
+*.bin
+
+# OS/editor noise
+Thumbs.db
+Desktop.ini
+.DS_Store
+*.swp
