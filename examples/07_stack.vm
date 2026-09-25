@@ -1,0 +1,11 @@
+// 07_stack -- push/pop use the stack (LIFO), so this swaps rax and rbx.
+
+    mov @rax, 42
+    mov @rbx, 7
+    push @rax          // stack: [42]
+    push @rbx          // stack: [42, 7]
+    pop @rcx           // rcx = 7   (last in, first out)
+    pop @rdx           // rdx = 42
+    halt
+
+// expected: regs[0]=42 (ax) regs[1]=7 (bx) regs[2]=7 (cx) regs[3]=42 (dx)

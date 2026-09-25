@@ -94,12 +94,12 @@ See the `examples/` folder for more sample programs; each ends with an
 | `cmp`   | set the zero flag when operands are equal |
 | `jmp` `go2` | unconditional branch to a label |
 | `jz` `jnz`  | branch on the zero flag |
+| `push` `pop` | push a register's value / pop the top of the stack into a register |
 | `store` | push a string's bytes onto the stack |
 | `halt`  | stop the VM |
 
-Accepted operand shapes: `reg,reg` · `reg,imm` · `imm,imm` · `string` ·
-`label` · none. A bare single-register operand (e.g. `push @rax`) is not
-encodable yet.
+Accepted operand shapes: `reg,reg` · `reg,imm` · `imm,imm` · `reg` · `string` ·
+`label` · none.
 
 ## Bytecode format
 
@@ -143,6 +143,7 @@ The prefix selects which operand bytes follow the opcode byte:
 | 3      | string    | length byte, then `length` char bytes  |
 | 4      | label     | 2-byte little-endian address           |
 | 5      | none      | (nothing)                              |
+| 6      | reg       | reg byte                               |
 
 ### Register byte
 
@@ -210,8 +211,6 @@ store "sum"      6D 03 73 75 6D
 This is a simple experimental VM project. Notes on the current state:
 
 - `ret` and `load` are placeholder handlers (no-ops).
-- `push` and `pop` are implemented in the runtime but the assembler can't yet
-  encode their single-register operand, so they aren't usable from `.vm` source.
-- Register index 7 (`di`) doubles as the stack pointer for `store`/`push`, so
-  avoid `@rdi` as a scratch register in programs that touch the stack.
+- Register index 7 (`di`) doubles as the stack pointer for `push`/`pop`/`store`,
+  so avoid `@rdi` as a scratch register in programs that touch the stack.
 - `div`/`mod` by zero halts the VM rather than trapping.

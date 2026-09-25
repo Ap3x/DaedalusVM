@@ -163,6 +163,8 @@ func token2Bytes(i int, toks []Token, buf *[]byte, labels map[string]uint16) err
 			prefix = 1
 		case len(combo) == 2 && combo[0] == TokInt && combo[1] == TokInt:
 			prefix = 2
+		case len(combo) == 1 && combo[0] == TokRegister:
+			prefix = 6 // single register operand (e.g. push, pop)
 		case combo[0] == TokString:
 			prefix = 3
 		case combo[0] == TokAddress:

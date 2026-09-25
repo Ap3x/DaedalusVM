@@ -223,6 +223,13 @@ Instr parse_instruction(VM* vm) {
     }
     case 5: /* no operands (ret, halt) -- loop's ++pc covers the opcode byte */
         break;
+    case 6: { /* single register (push, pop) */
+        uint8_t regByte = vm->prog[vm->pc + 1];
+        instruction.store_reg = regByte & 0x0F;      /* register INDEX  (pop's dest) */
+        instruction.a = reg_value(vm, regByte);      /* register VALUE  (push's src) */
+        vm->pc += 1;
+        break;
+    }
     }
 
     return instruction;
