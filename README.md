@@ -19,7 +19,7 @@ The VM supports registers, arithmetic, comparisons, jumps, string storage onto a
 
 - Windows
 - CMake 3.20+
-- Visual Studio C++ build tools with `cl.exe`
+- Visual Studio 2022 with the C++ (MSVC) toolset
 - Go (for the assembler)
 
 ## Build
@@ -37,22 +37,6 @@ This produces:
 - `build\Release\Ap3xVMLoader.exe` — the VM loader
 - `compiler\VMCompiler.exe` — the Go assembler
 
-### Building by hand (optional)
-
-Assembler:
-
-```powershell
-cd compiler
-go build -o VMCompiler.exe .
-cd ..
-```
-
-Loader, from a Visual Studio developer shell:
-
-```powershell
-cl /nologo /EHsc /Fe:Ap3xVMLoader.exe Ap3xVMLoader.cpp
-```
-
 ## Usage
 
 Compile a VM source file:
@@ -69,12 +53,12 @@ build\Release\Ap3xVMLoader.exe examples\02_loop_sum.bin
 
 If no bytecode file is provided, the loader runs its built-in demo program.
 
-The `examples/` folder has a `run.ps1` that builds both tools and runs every
-sample in one step:
+To build, assemble, and run an example in one go:
 
 ```powershell
-pwsh examples\run.ps1                 # run all examples
-pwsh examples\run.ps1 03_factorial    # run one
+cmake --build build --config Release
+compiler\VMCompiler.exe examples\03_factorial.vm
+build\Release\Ap3xVMLoader.exe examples\03_factorial.bin
 ```
 
 ## Example VM Code
@@ -117,11 +101,109 @@ Accepted operand shapes: `reg,reg` · `reg,imm` · `imm,imm` · `string` ·
 `label` · none. A bare single-register operand (e.g. `push @rax`) is not
 encodable yet.
 
-### Bytecode format
+## Bytecode format
 
-Each instruction starts with one opcode byte: the high 3 bits are an operand
-**prefix** (selecting the layout of the bytes that follow) and the low 5 bits
-are the **instruction index**. Register bytes use `size << 4 | index`.
+Bytecode is a flat byte stream. Execution starts at offset 0; each instruction
+is one **opcode byte** followed by zero or more operand bytes whose layout is
+chosen by the opcode's prefix.
+
+### Opcode byte
+
+The high 3 bits are the operand **prefix**; the low 5 bits are the
+**instruction index**. Five bits are needed because there are 17 instructions
+(0–16) — a nibble would overflow at `halt` (16).
+
+```
+ bit   7   6   5   4   3   2   1   0
+      +-----------+-------------------+
+      |  prefix   |  instruction idx  |
+      |  (0..5)   |     (0..16)       |
+      +-----------+-------------------+
+        byte = (prefix << 5) | index
+```
+
+Instruction indices:
+
+| idx | instr | idx | instr | idx | instr |
+|----:|-------|----:|-------|----:|-------|
+| 0 | `add` | 6 | `jz`  | 12 | `load`  |
+| 1 | `sub` | 7 | `jnz` | 13 | `store` |
+| 2 | `mul` | 8 | `cmp` | 14 | `go2`   |
+| 3 | `div` | 9 | `ret` | 15 | `mov`   |
+| 4 | `mod` | 10 | `push` | 16 | `halt` |
+| 5 | `jmp` | 11 | `pop`  |    |        |
+
+The prefix selects which operand bytes follow the opcode byte:
+
+| prefix | operands  | bytes after the opcode                 |
+|:------:|-----------|----------------------------------------|
+| 0      | reg, reg  | reg byte, reg byte                     |
+| 1      | reg, imm  | reg byte, immediate (width = reg size) |
+| 2      | imm, imm  | 8-byte immediate, 8-byte immediate     |
+| 3      | string    | length byte, then `length` char bytes  |
+| 4      | label     | 2-byte little-endian address           |
+| 5      | none      | (nothing)                              |
+
+### Register byte
+
+The high nibble is the register **size**; the low nibble is its **index**.
+
+```
+ bit   7   6   5   4   3   2   1   0
+      +---------------+---------------+
+      |     size      |     index     |
+      +---------------+---------------+
+        byte = (size << 4) | index
+```
+
+| size nibble | prefix | width           |
+|:-----------:|:------:|-----------------|
+| 0           | `r`    | 8 bytes (64-bit)|
+| 1           | `e`    | 4 bytes (32-bit)|
+| 2           | `u`    | 2 bytes (16-bit)|
+| 3           | `l`    | 1 byte (8-bit)  |
+
+| index | reg | index | reg |
+|:-----:|:---:|:-----:|:---:|
+| 0 | `ax` | 4 | `sp` |
+| 1 | `bx` | 5 | `bp` |
+| 2 | `cx` | 6 | `si` |
+| 3 | `dx` | 7 | `di` |
+
+So `@rax` = `0x00`, `@rbx` = `0x01`, `@lax` = `0x30`, `@edi` = `0x17`.
+
+### Immediates, strings, addresses
+
+- **Immediate** (prefix 1): little-endian, with a width taken from the
+  destination register's size — `r`=8, `e`=4, `u`=2, `l`=1 bytes. Under
+  prefix 2 both immediates are a fixed 8 bytes.
+- **String** (prefix 3): one length byte (0–255) followed by that many
+  single-byte characters (the assembler lowercases them).
+- **Address** (prefix 4): the target label's absolute byte offset, as two
+  little-endian bytes (low byte, then high byte).
+
+### Worked examples
+
+```
+mov @rax, 5      2F 00 05 00 00 00 00 00 00 00
+                 |  |  +----------------------- imm 5, 8 bytes LE (rax is 8-byte)
+                 |  +--- reg @rax = (0<<4)|0 = 0x00
+                 +------ opcode   = (1<<5)|15 = 0x2F   (prefix 1 reg,imm; mov=15)
+
+add @rax, @rbx   00 00 01
+                 |  |  +- reg @rbx = 0x01
+                 |  +---- reg @rax = 0x00
+                 +------- opcode   = (0<<5)|0 = 0x00   (prefix 0 reg,reg; add=0)
+
+jnz .loop        87 1E 00                       (.loop is at offset 0x001E = 30)
+                 |  +--+-- address, little-endian
+                 +------- opcode = (4<<5)|7 = 0x87     (prefix 4 label; jnz=7)
+
+store "sum"      6D 03 73 75 6D
+                 |  |  +--+--+-- 's' 'u' 'm'
+                 |  +---------- length = 3
+                 +------------- opcode = (3<<5)|13 = 0x6D (prefix 3 string; store=13)
+```
 
 ## Project Status
 
