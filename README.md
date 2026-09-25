@@ -211,6 +211,6 @@ store "sum"      6D 03 73 75 6D
 This is a simple experimental VM project. Notes on the current state:
 
 - `ret` and `load` are placeholder handlers (no-ops).
-- Register index 7 (`di`) doubles as the stack pointer for `push`/`pop`/`store`,
-  so avoid `@rdi` as a scratch register in programs that touch the stack.
+- The stack pointer is a dedicated internal register, so all eight named
+  registers (`ax`..`di`) are free for general use.
 - `div`/`mod` by zero halts the VM rather than trapping.

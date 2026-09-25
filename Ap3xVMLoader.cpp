@@ -5,7 +5,6 @@
 
 #define NUM_REGS 8
 #define STACK_SIZE 10*1024*1024 // 10MB
-#define REG_SP 7                // Register used for stack
 
 typedef enum {
     OP_ADD,
@@ -39,6 +38,7 @@ typedef struct {
 typedef struct {
     uint64_t            regs[NUM_REGS];
     uint64_t            stack[STACK_SIZE];
+    uint64_t            sp;             /* dedicated stack pointer (not a general register) */
     uint8_t             zero_flag;
     uint8_t             running;
     size_t              n_instr;        /* instruction count */
@@ -133,19 +133,19 @@ static void h_return(VM* vm, Instr instruction) {
 }
 
 static void h_push(VM* vm, Instr instruction) {
-    if (vm->regs[REG_SP] >= STACK_SIZE) { 
+    if (vm->sp >= STACK_SIZE) { 
         vm->running = 0;
         return;
     }
-    vm->stack[vm->regs[REG_SP]++] = instruction.a;
+    vm->stack[vm->sp++] = instruction.a;
 }
 
 static void h_pop(VM* vm, Instr instruction) {
-    if (vm->regs[REG_SP] == 0) {         
+    if (vm->sp == 0) {         
         vm->running = 0;
         return;
     }
-    vm->regs[instruction.store_reg] = vm->stack[--vm->regs[REG_SP]];
+    vm->regs[instruction.store_reg] = vm->stack[--vm->sp];
 }
 
 static void h_load(VM* vm, Instr instruction) {
@@ -154,11 +154,11 @@ static void h_load(VM* vm, Instr instruction) {
 
 static void h_store(VM* vm, Instr instruction) {
     for (uint64_t i = 0; i < instruction.a; i++) {
-        if (vm->regs[REG_SP] >= STACK_SIZE) { /* stack full -> stop the VM */
+        if (vm->sp >= STACK_SIZE) { /* stack full -> stop the VM */
             vm->running = 0;
             return;
         }
-        vm->stack[vm->regs[REG_SP]++] = (uint8_t)instruction.s[i];
+        vm->stack[vm->sp++] = (uint8_t)instruction.s[i];
     }
 }
 
@@ -305,10 +305,10 @@ int main(int argc, char** argv) {
     for (int i = 0; i < NUM_REGS; i++)
         printf("regs[%d] = %llu\n", i, (unsigned long long)vm->regs[i]);
 
-    printf("stack (sp=%llu): ", (unsigned long long)vm->regs[REG_SP]);
-    for (uint64_t i = 0; i < vm->regs[REG_SP] && i < 32; i++)
+    printf("stack (sp=%llu): ", (unsigned long long)vm->sp);
+    for (uint64_t i = 0; i < vm->sp && i < 32; i++)
         printf("%c", (char)vm->stack[i]);
-    printf("%s\n", vm->regs[REG_SP] > 32 ? " ..." : "");
+    printf("%s\n", vm->sp > 32 ? " ..." : "");
 
     free(loaded);
     free(vm);
